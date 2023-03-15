@@ -20,7 +20,7 @@ class Geography:
         # For example, using a kernel density estimator
         return np.random.rand(self.grid_size, self.grid_size)
     
-    def visualise_topology(self):
+    def visualise_topology_3d(self):
         # Visualize the topology using a 3D plot
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -28,6 +28,12 @@ class Geography:
         y = np.arange(0, self.grid_size, 1)
         X, Y = np.meshgrid(x, y)
         ax.plot_surface(X, Y, self.topology, cmap='terrain')
+        plt.show()
+
+    def visualise_topology_contours(self):
+        # Visualize the topology using a contour map
+        plt.contour(self.topology, cmap='terrain')
+        plt.colorbar()
         plt.show()
     
     def visualise_household_density(self):
@@ -43,6 +49,7 @@ class Geography:
         plt.show()
 
 geo = Geography("City A", 100)
-geo.visualise_topology()
+geo.visualise_topology_3d()
+geo.visualise_topology_contours()
 geo.visualise_household_density()
 geo.visualise_combined()
