@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood Mitigation Tool</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='static.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<nav>
+    <a href="{{ url_for('index') }}">Home</a>
+    <a href="{{ url_for('parameter_estimation') }}">Parameter Estimation</a>
+    <a href="{{ url_for('cost_estimation') }}">Cost Estimation</a>
+</nav>
+<body>
+    <h1>Flood Mitigation Tool</h1>
+
+    <form id="flood-analysis-form">
+        <div class="slider-container">
+            <label for="hh_in_1_to_10">Households in 1:10 flood zone:</label>
+            <input type="range" id="hh_in_1_to_10" name="hh_in_1_to_10" min="0" max="100" value="19">
+            <span id="hh_in_1_to_10_value">19</span>
+        </div>
+        
+        <div class="slider-container">
+            <label for="hh_in_1_to_100">Households in 1:100 flood zone:</label>
+            <input type="range" id="hh_in_1_to_100" name="hh_in_1_to_100" min="0" max="1000" value="855">
+            <span id="hh_in_1_to_100_value">855</span>
+        </div>
+        
+        <div class="slider-container">
+            <label for="hh_in_1_to_1000">Households in 1:1000 flood zone:</label>
+            <input type="range" id="hh_in_1_to_1000" name="hh_in_1_to_1000" min="0" max="3000" value="1959">
+            <span id="hh_in_1_to_1000_value">1959</span>
+        </div>
+    
+        <!-- Add more sliders for other variables here -->
+        <input type="submit" value="Calculate" class="calculate-btn">
+    </form>
+
+    <h2>One-off costs and annual expected costs</h2>
+    <div id="results-table">
+        <!-- The results table will be inserted here -->
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Update the displayed slider value when it changes
+            $('input[type=range]').on('input', function() {
+                $('#' + this.id + '_value').text(this.value);
+            });
+    
+            // Submit the form and update the table without reloading the page
+            $('#flood-analysis-form').on('submit', function(event) {
+                event.preventDefault();
+    
+                $.ajax({
+                    url: '{{ url_for("cost_estimation") }}',
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(response) {
+                        $('#results-table').html(response.html);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+

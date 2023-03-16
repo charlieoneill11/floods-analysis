@@ -1,6 +1,14 @@
+import numpy as np
+import pandas as pd
+from scipy.optimize import curve_fit
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import time
+
 class FloodsAnalysis:
 
-    def __init__(self, hh_in_1_to_10=19, hh_in_1_to_100=855, hh_in_pmf=1959, 
+    def __init__(self, hh_in_1_to_10=19, hh_in_1_to_100=855, hh_in_1_to_1000=1959, 
                  avg_income_loss=818.9, cost_rebuild=473000, cost_repair=17000, 
                  discount_rate=0, prop_rebuild=0.5, prop_repair=0.5, 
                  weeks_rent_while_repairing=12, weeks_rent_while_rebuilding=1):
@@ -9,9 +17,9 @@ class FloodsAnalysis:
         # Number of households in the 1:100 flood zone
         self.hh_in_1_to_100 = hh_in_1_to_100
         # Number of households in the probable maximum flood zone
-        self.hh_in_pmf = hh_in_pmf
+        self.hh_in_1_to_1000 = hh_in_1_to_1000
         # Dictionary of house densities
-        self.hh_dict = {10: self.hh_in_1_to_10, 100: self.hh_in_1_to_100, 1000: self.hh_in_pmf}
+        self.hh_dict = {10: self.hh_in_1_to_10, 100: self.hh_in_1_to_100, 1000: self.hh_in_1_to_1000}
         # Average income loss per household due to the flood
         self.avg_income_loss = avg_income_loss
         # Cost of rebuilding a household
@@ -37,7 +45,7 @@ class FloodsAnalysis:
         cc = CalculateCosts(self.hh_dict, [10, 100, 1000], self.cost_rebuild, self.prop_rebuild)
         return cc.calculate_costs()
     
-    def calculate_lost_income(self):
+    def calculate_income_costs(self):
         cc = CalculateCosts(self.hh_dict, [10, 100, 1000], self.avg_income_loss, 1)
         return cc.calculate_costs()
     
@@ -55,10 +63,59 @@ class FloodsAnalysis:
         return costs + [total]
     
     def calculate_total_costs(self):
-        repair = flood_analysis.calculate_repair_costs()[-1]
-        rebuild = flood_analysis.calculate_rebuild_costs()[-1]
-        income = flood_analysis.calculate_lost_income()[-1]
-        rental = flood_analysis.calculate_rental_costs()[-1]
+        repair = self.calculate_repair_costs()
+        rebuild = self.calculate_rebuild_costs()
+        income = self.calculate_income_costs()
+        rental = self.calculate_rental_costs()
+        totals = []
+        for i in range(len(repair)):
+            totals.append((repair[i] + rebuild[i] + income[i] + rental[i]))
+        return totals
+
+    def print_costs(self):
+        matrix = np.vstack([self.calculate_repair_costs(), 
+                            self.calculate_rebuild_costs(), 
+                            self.calculate_income_costs(),
+                            self.calculate_rental_costs(),
+                            self.calculate_total_costs()]).astype(int)
+
+        # define row and column labels
+        rows = ['Repair', 'Rebuild', 'Income', 'Rental', 'Total']
+        cols = ['1-in-10', '1-in-100', '1-in-1000', 'Annual exp. cost (all floods)']
+
+        # create pandas data frame
+        df = pd.DataFrame(data=matrix, index=rows, columns=cols)
+
+        # show the data frame
+        print(df)
+
+    def expected_cost_to_government(self):
+        costs = []
+        totals = self.calculate_total_costs()
+        years = list(self.hh_dict.keys())
+        probs = [1/y for y in years]
+        for i, y in enumerate(years):
+            c = 2.41 * totals[i]
+            costs.append(c)
+        total = probs[0]*costs[0] + ((probs[0]+probs[1])/2)*(costs[1]-costs[0]) + ((probs[1]+probs[2])/2)*(costs[2] - costs[1])
+        return total
+
+
+    def expected_cost_to_business(self):
+        costs = []
+        totals = self.calculate_total_costs()
+        years = list(self.hh_dict.keys())
+        probs = [1/y for y in years]
+        for i, y in enumerate(years):
+            c = 1.8689 * totals[i]
+            costs.append(c)
+        total = probs[0]*costs[0] + ((probs[0]+probs[1])/2)*(costs[1]-costs[0]) + ((probs[1]+probs[2])/2)*(costs[2] - costs[1])
+        return total
+    
+class NPV:
+
+    def __init__(self):
+        pass
 
 
 class CalculateCosts:
@@ -79,10 +136,49 @@ class CalculateCosts:
         total = probs[0]*costs[0] + ((probs[0]+probs[1])/2)*(costs[1]-costs[0]) + ((probs[1]+probs[2])/2)*(costs[2] - costs[1])
         return costs + [total]
 
+def logarithmic_func(x, a, b):
+    return a * np.log(x) + b
 
-flood_analysis = FloodsAnalysis()
+def fit_logarithmic_curve(cost_points, probability_points):
+    popt, pcov = curve_fit(logarithmic_func, cost_points, probability_points)
+    return popt
 
-print(flood_analysis.calculate_repair_costs())
-print(flood_analysis.calculate_rebuild_costs())
-print(flood_analysis.calculate_lost_income())
-print(flood_analysis.calculate_rental_costs())
+
+def generate_plot(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000):
+    flood_analysis = FloodsAnalysis(hh_in_1_to_10=hh_in_1_to_10,
+                                    hh_in_1_to_100=hh_in_1_to_100,
+                                    hh_in_1_to_1000=hh_in_1_to_1000)
+    cost_points = flood_analysis.calculate_total_costs()[:-1]
+    probability_points = [0.1, 0.01, 0.001]
+
+    # Fit logarithmic curve to data
+    a, b = fit_logarithmic_curve(cost_points, probability_points)
+
+    # Create a range of cost values to generate the curve
+    x_vals = np.linspace(min(cost_points), max(cost_points), 100)
+
+    # Generate the logarithmic curve using the fitted parameters
+    y_vals = logarithmic_func(x_vals, a, b)
+
+    # Plot the data points and the logarithmic curve
+    fig, ax = plt.subplots(figsize=(5, 3))
+    ax.plot(cost_points, probability_points, 'o', label='Data Points')
+    ax.plot(x_vals, y_vals, label=r'Logarithmic Fit: $y = a\ln(x) + b$')
+
+    # Format the legend to include the equation for the logarithmic curve
+    eqn_str = fr'$y = {a:.2f}\ln(x) + {b:.2f}$'
+    ax.legend(labels=['Data Points', eqn_str])
+
+    # Set the axis labels and title
+    ax.set_xlabel('Cost ($M)')
+    ax.set_ylabel('Probability')
+    ax.set_title('One-off cost of different flood levels')
+
+    plt.subplots_adjust(bottom=0.2)
+
+    # Save the plot as an image file
+    plt.savefig('static/plot.png', dpi=200)
+
+# fa = FloodsAnalysis()
+# print(fa.expected_cost_to_government())
+# print(fa.expected_cost_to_business())
