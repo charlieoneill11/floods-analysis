@@ -72,12 +72,16 @@ class FloodsAnalysis:
             totals.append((repair[i] + rebuild[i] + income[i] + rental[i]))
         return totals
 
-    def print_costs(self):
+    def cost_matrix(self):
         matrix = np.vstack([self.calculate_repair_costs(), 
                             self.calculate_rebuild_costs(), 
                             self.calculate_income_costs(),
                             self.calculate_rental_costs(),
                             self.calculate_total_costs()]).astype(int)
+        return matrix
+
+    def print_costs(self):
+        matrix = self.cost_matrix()
 
         # define row and column labels
         rows = ['Repair', 'Rebuild', 'Income', 'Rental', 'Total']
@@ -112,11 +116,38 @@ class FloodsAnalysis:
         total = probs[0]*costs[0] + ((probs[0]+probs[1])/2)*(costs[1]-costs[0]) + ((probs[1]+probs[2])/2)*(costs[2] - costs[1])
         return total
     
-class NPV:
+class NPV(FloodsAnalysis):
 
-    def __init__(self):
-        pass
+    # This class inherits from the FloodsAnalysis class. 
+    # It calculates the net present value of costs and benefits over time.
+    # To do this, it uses a discount rate.
 
+    def __init__(self, year_range=range(2022, 2043), discount_rate=0.0):
+        super().__init__()
+        # Year range e.g. current year to 2042
+        self.year_range = year_range
+        self.discount_rate = discount_rate
+
+    def retrieve_variables(self):
+        # Retrieve variables from the FloodsAnalysis class
+        matrix = self.cost_matrix()
+        # Retrieve the final column from the cost matrix
+        costs = matrix[:,-1]
+        # Retrieve government and discount costs
+        gov_cost = self.expected_cost_to_government()
+        bus_cost = self.expected_cost_to_business()
+        # Create a numpy vector of [costs, gov_cost, bus_cost]
+        costs = np.append(costs, [gov_cost, bus_cost])
+        # Turn costs (7x1) into a matrix (7xlen(year_range))
+        costs = np.tile(costs, (len(self.year_range), 1))
+        return costs
+    
+    def sum_costs(self):
+        # Get the cost matrix using calculate_costs
+        costs = self.retrieve_variables()
+        # Sum each column and return the answer as a vector
+        return np.sum(costs, axis=0)
+        
 
 class CalculateCosts:
     
@@ -135,6 +166,7 @@ class CalculateCosts:
         # calculate total
         total = probs[0]*costs[0] + ((probs[0]+probs[1])/2)*(costs[1]-costs[0]) + ((probs[1]+probs[2])/2)*(costs[2] - costs[1])
         return costs + [total]
+    
 
 def logarithmic_func(x, a, b):
     return a * np.log(x) + b
@@ -179,6 +211,7 @@ def generate_plot(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000):
     # Save the plot as an image file
     plt.savefig('static/plot.png', dpi=200)
 
-# fa = FloodsAnalysis()
+npv = NPV(year_range=range(2022, 2043), discount_rate=0.0)
+print(npv.sum_costs())
 # print(fa.expected_cost_to_government())
 # print(fa.expected_cost_to_business())
