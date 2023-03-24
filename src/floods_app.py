@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, render_template_string, url_for, jsonify
+from flask import escape
 import matplotlib
 matplotlib.use('Agg')
 import time
@@ -23,9 +24,6 @@ def parameter_estimation():
 
 @app.route('/cost_estimation', methods=['GET', 'POST'])
 def cost_estimation():
-    # Your existing code for the 'result' route, update the route name
-    # ...
-    
     if request.method == 'POST':
         # Retrieve user input from the form
         hh_in_1_to_10 = int(request.form.get('hh_in_1_to_10', 19))
@@ -55,12 +53,21 @@ def cost_estimation():
             'Total': total_costs,
         }
 
-        # Add timestamp to the image URL
         timestamp = int(time.time())
         plot_url = url_for('static', filename='plot.png', t=timestamp)
 
-
+        # Create an instance of the NPV class called npv_instance
+        npv_instance = NPV(hh_in_1_to_10=hh_in_1_to_10, 
+                           hh_in_1_to_100=hh_in_1_to_100, 
+                           hh_in_1_to_1000=hh_in_1_to_1000)
+        npv_table_df = npv_instance.npv_table()
+        npv_table_html = npv_table_df.to_html(classes="npv-table", escape=False, justify="center", border=0)
+        
         table_template = '''
+        <h2 style="text-align:center;">Net Present Value (NPV) Costs</h2>
+        {{ npv_table_html|safe }}
+
+        <h2 style="text-align:center;">Flood Cost Estimation</h2>
         <table style="margin-left: auto; margin-right: auto; border-collapse: separate; border-spacing: 15px;">
             <thead>
                 <tr>
@@ -86,7 +93,7 @@ def cost_estimation():
         '''
 
         return jsonify({
-            'html': render_template_string(table_template, results=results, plot_url=plot_url)
+            'html': render_template_string(table_template, results=results, plot_url=plot_url, npv_table_html=npv_table_html)
         })
 
     return render_template('cost_estimation.html')

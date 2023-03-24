@@ -122,8 +122,10 @@ class NPV(FloodsAnalysis):
     # It calculates the net present value of costs and benefits over time.
     # To do this, it uses a discount rate.
 
-    def __init__(self, year_range=range(2022, 2043), discount_rate=0.0):
-        super().__init__()
+    def __init__(self, year_range=range(2022, 2043), discount_rate=0.0, 
+                 hh_in_1_to_10=19, hh_in_1_to_100=855, hh_in_1_to_1000=1959):
+        super().__init__(hh_in_1_to_10=hh_in_1_to_10, hh_in_1_to_100=hh_in_1_to_100, 
+                         hh_in_1_to_1000=hh_in_1_to_1000)
         # Year range e.g. current year to 2042
         self.year_range = year_range
         self.discount_rate = discount_rate
@@ -147,6 +149,56 @@ class NPV(FloodsAnalysis):
         costs = self.retrieve_variables()
         # Sum each column and return the answer as a vector
         return np.sum(costs, axis=0)
+    
+    def npv(self, values):
+        """
+        Calculates the net present value of an investment by using a discount rate and a series of future payments 
+        (negative values) and income (positive values).
+        """
+        periods = np.arange(1, len(values) + 1)
+        discount_factors = 1 / ((1 + self.discount_rate) ** periods)
+        npv = np.sum(values * discount_factors)
+        return npv
+    
+    def npv_results(self):
+        # Get the year-on-year cost matrix
+        costs = self.retrieve_variables()
+        # Get household, government and business costs as the 5th, 6th and 7th columns
+        hh_costs = costs[:, 4]
+        gov_costs = costs[:, 5]
+        bus_costs = costs[:, 6]
+        # Calculate the net present value of the costs
+        hh_npv = self.npv(hh_costs)
+        gov_npv = self.npv(gov_costs)
+        bus_npv = self.npv(bus_costs)
+        return hh_npv, gov_npv, bus_npv
+    
+    def npv_table(self, discount_rates=[0, 2, 5]):
+        # Calculate the NPVs for each discount rate
+        original_dr = self.discount_rate
+        npvs = []
+        for rate in discount_rates:
+            self.discount_rate = rate
+            hh_npv, gov_npv, bus_npv = self.npv_results()
+            total_npv = hh_npv + gov_npv + bus_npv
+            npvs.append([hh_npv / 1e6, gov_npv / 1e6, bus_npv / 1e6, total_npv / 1e6])
+
+        # Create a dataframe with the results
+        df = pd.DataFrame(npvs, columns=['HH NPV $m', 'Gov NPV $m', 'Business NPV $m', 'Total $m'],
+                        index=[f'Discount rate {rate}%' for rate in discount_rates])
+
+        # Format the dataframe to show results in units of million dollars
+        df['HH NPV $m'] = df['HH NPV $m'].map('${:,.2f}'.format)
+        df['Gov NPV $m'] = df['Gov NPV $m'].map('${:,.2f}'.format)
+        df['Business NPV $m'] = df['Business NPV $m'].map('${:,.2f}'.format)
+        df['Total $m'] = df['Total $m'].map('${:,.2f}'.format)
+
+        # Reset discount rate
+        self.discount_rate = original_dr
+
+        return df
+
+
         
 
 class CalculateCosts:
@@ -211,7 +263,7 @@ def generate_plot(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000):
     # Save the plot as an image file
     plt.savefig('static/plot.png', dpi=200)
 
-npv = NPV(year_range=range(2022, 2043), discount_rate=0.0)
-print(npv.sum_costs())
+npv = NPV(year_range=range(2022, 2043), discount_rate=0.02)
+print(npv.npv_table())
 # print(fa.expected_cost_to_government())
 # print(fa.expected_cost_to_business())
