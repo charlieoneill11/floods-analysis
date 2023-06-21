@@ -41,15 +41,14 @@ class Strategy:
         return strategy_dfs
     
 if __name__ == "__main__":
-    strategy_comp_buyback = Strategy("compulsory_buyback")
-    strategy_comp_buyback.run()
+    years = range(2023, 2041)  # define the range of years
+    strategies = ["../data/compulsory_buyback.npy", "../data/voluntary_buyback.npy", 
+                  "../data/voluntary_landswap.npy", "../data/compulsory_landswap.npy"]  # list of strategies
+    
+    strategy = Strategy(years)
+    strategy_dfs = strategy.calculate_strategies(strategies, strategy.base_cost_func)
 
-    strategy_vol_buyback = Strategy("voluntary_buyback")
-    strategy_vol_buyback.run()
-
-    strategy_vol_landswap = Strategy("voluntary_landswap")
-    strategy_vol_landswap.run()
-
-    strategy_comp_landswap = Strategy("compulsory_landswap")
-    strategy_comp_landswap.run()
+    # For now, we'll just print the DataFrames to the console
+    for df in strategy_dfs:
+        print(df)
     
