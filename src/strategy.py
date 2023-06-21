@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Callable
 from main import FloodsAnalysis
+import re
 
 class Strategy:
     def __init__(self, years: range):
@@ -87,15 +88,37 @@ class Strategy:
             summary_data.append(row_data)
         summary_df = pd.DataFrame(summary_data, index=rate_strings)
         return summary_df
+    
+    def final_summary(self, strategies: list, discount_rates=[0, 0.02]):
+        summary_data = []
+        for rate in discount_rates:
+            rate_str = f"{int(rate * 100)}% Discount rate"
+            row_data = {}
+            for strategy_file in strategies:
+                df = self.calculate_strategy(strategy_file)
+  
+                # Extract the file name from the path
+                file_name = strategy_file.split('/')[-1]
+                # Remove the file extension
+                file_name_without_extension = file_name.split('.')[0]
+                # Convert the file name to title case
+                strategy_name = file_name_without_extension.replace("_", " ").title()
+
+                row_data.update({
+                    f'Total ({strategy_name})': self.npv(df['HH_cost_difference'] + df['gov_cost_difference'] + df['bus_cost_difference'], rate),
+                    f'Avoided HH cost ({strategy_name})': self.npv(df['HH_cost_without_program'] - df['HH_cost_with_program'], rate),
+                    f'Avoided Gov cost ({strategy_name})': self.npv(df['gov_cost_without_program'] - df['gov_cost_with_program'], rate),
+                    f'Avoided Bus cost ({strategy_name})': self.npv(df['bus_cost_without_program'] - df['bus_cost_with_program'], rate)
+                })
+            summary_data.append(row_data)
+        summary_df = pd.DataFrame(summary_data, index=[f"{int(rate * 100)}% Discount rate" for rate in discount_rates])
+        return summary_df
         
 if __name__ == "__main__":
     years = range(2022, 2043)  # define the range of years
-    strategies = ["../data/compulsory_buyback.txt"]#, "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
+    strategies = ["../data/compulsory_buyback.txt", "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
     
-    strategy = Strategy(years)
-    strategy_dfs = strategy.calculate_strategies(strategies)
-
-    # For now, we'll just print the DataFrames to the console
+    strat = Strategy(years)
+    strategy_dfs = strat.calculate_strategies(strategies)
     for df in strategy_dfs:
-        summary_df = strategy.summarise_strategy(df)
-        print(summary_df)
+        print(df)

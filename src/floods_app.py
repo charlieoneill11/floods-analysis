@@ -52,6 +52,24 @@ def strategy_tables():
     '''
     return render_template_string(template, tables=tables)
 
+@app.route('/final_summary', methods=['POST'])
+def final_summary():
+    # Parse the form data
+    form_data = request.form
+    households_in_flood_zones = {key: int(form_data[key]) for key in form_data}
+
+    # Create the FloodsAnalysis and Strategy objects
+    floods_analysis = FloodsAnalysis(households_in_flood_zones)
+    strategy = Strategy(range(2023, 2044))  # Use the appropriate range of years
+
+    # Create the final summary DataFrame
+    strategies = ["../data/compulsory_buyback.txt", "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
+    final_summary_df = strategy.final_summary(strategies)
+    final_summary_df = final_summary_df.applymap(round_to_millions)
+
+    # Convert the DataFrame to HTML and return it
+    return jsonify(final_summary_html=final_summary_df.to_html())
+
 @app.route('/cost_estimation', methods=['GET', 'POST'])
 def cost_estimation():
     if request.method == 'POST':
