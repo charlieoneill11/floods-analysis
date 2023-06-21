@@ -93,6 +93,17 @@ class FloodsAnalysis:
         # show the data frame
         print(df)
 
+    def expected_cost_to_hh(self):
+        costs = []
+        totals = self.calculate_total_costs()
+        years = list(self.hh_dict.keys())
+        probs = [1/y for y in years]
+        for i, y in enumerate(years):
+            c = totals[i]  # assuming the cost to HH is simply the total cost
+            costs.append(c)
+        total = probs[0]*costs[0] + ((probs[0]+probs[1])/2)*(costs[1]-costs[0]) + ((probs[1]+probs[2])/2)*(costs[2] - costs[1])
+        return total
+
     def expected_cost_to_government(self):
         costs = []
         totals = self.calculate_total_costs()
@@ -263,7 +274,9 @@ def generate_plot(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000):
     # Save the plot as an image file
     plt.savefig('static/plot.png', dpi=200)
 
-npv = NPV(year_range=range(2022, 2043), discount_rate=0.02)
-print(npv.npv_table())
-# print(fa.expected_cost_to_government())
-# print(fa.expected_cost_to_business())
+# npv = NPV(year_range=range(2022, 2043), discount_rate=0.02)
+# print(npv.npv_table())
+fa = FloodsAnalysis()
+print(fa.expected_cost_to_hh())
+print(fa.expected_cost_to_government())
+print(fa.expected_cost_to_business())

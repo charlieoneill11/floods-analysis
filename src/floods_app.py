@@ -64,32 +64,34 @@ def cost_estimation():
         npv_table_html = npv_table_df.to_html(classes="npv-table", escape=False, justify="center", border=0)
         
         table_template = '''
-        <h2 style="text-align:center;">Net Present Value (NPV) Costs</h2>
-        {{ npv_table_html|safe }}
+            <h2 style="text-align:center;">Net Present Value (NPV) Costs</h2>
+            {{ npv_table_html|safe }}
 
-        <h2 style="text-align:center;">Flood Cost Estimation</h2>
-        <table style="margin-left: auto; margin-right: auto; border-collapse: separate; border-spacing: 15px;">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>1-in-10</th>
-                    <th>1-in-100</th>
-                    <th>1-in-1000</th>
-                    <th>Annual exp. cost</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row, values in results.items() %}
+            <h2 style="text-align:center;">Flood Cost Estimation</h2>
+            <table style="margin-left: auto; margin-right: auto; border-collapse: separate; border-spacing: 15px;">
+                <thead>
                     <tr>
-                        <td>{{ row }}</td>
-                        {% for value in values %}
-                            <td>{{ (value / 1000000)|round(2) }} M$</td>
-                        {% endfor %}
+                        <th></th>
+                        <th>1-in-10</th>
+                        <th>1-in-100</th>
+                        <th>1-in-1000</th>
+                        <th>Annual exp. cost</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <img src="{{ plot_url }}" alt="Plot">
+                </thead>
+                <tbody>
+                    {% for row, values in results.items() %}
+                        <tr>
+                            <td>{{ row }}</td>
+                            {% for value in values %}
+                                <td>{{ (value / 1000000)|round(2) }} M$</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="display: flex; justify-content: center;">
+                <img src="{{ plot_url }}" alt="Plot">
+            </div>
         '''
 
         return jsonify({
