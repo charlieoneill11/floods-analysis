@@ -61,13 +61,41 @@ class Strategy:
 
         return strategy_dfs
     
+    def npv(self, cashflows, discount_rate):
+        years = np.arange(len(cashflows))
+        discounted_cashflows = cashflows / (1 + discount_rate)**years
+        return discounted_cashflows.sum()
+    
+    def summarise_strategy(self, df):
+        summary_data = []
+        rate_strings = []
+        for rate in [0, 0.02]:
+            rate_str = f"{int(rate * 100)}%"
+            rate_strings.append(rate_str)
+            row_data = {}
+            for entity in ['HH', 'gov', 'bus']:
+                npv_with_program = self.npv(df[f'{entity}_cost_with_program'], rate)
+                npv_without_program = self.npv(df[f'{entity}_cost_without_program'], rate)
+                npv_difference = self.npv(df[f'{entity}_cost_difference'], rate)
+                row_data.update({
+                    f'NPV {entity}': npv_with_program,
+                    f'NPV {entity} base': npv_without_program,
+                    f'Difference in NPV {entity}': npv_difference
+                })
+            npv_program = self.npv(df['program_cost'], rate)
+            row_data[f'NPV GOV program'] = npv_program
+            summary_data.append(row_data)
+        summary_df = pd.DataFrame(summary_data, index=rate_strings)
+        return summary_df
+        
 if __name__ == "__main__":
     years = range(2022, 2043)  # define the range of years
-    strategies = ["../data/compulsory_buyback.txt", "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
+    strategies = ["../data/compulsory_buyback.txt"]#, "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
     
     strategy = Strategy(years)
     strategy_dfs = strategy.calculate_strategies(strategies)
 
     # For now, we'll just print the DataFrames to the console
     for df in strategy_dfs:
-        print(df)
+        summary_df = strategy.summarise_strategy(df)
+        print(summary_df)

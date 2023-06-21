@@ -61,14 +61,16 @@
         <!-- The NPV table will be inserted here -->
     </div>
 
+    <h2>Strategy Alternatives</h2>
+    <div id="strategy-tables">
+        <!-- The strategy tables will be inserted here -->
+    </div>
+
     <script>
         $(document).ready(function() {
-            // Update the displayed slider value when it changes
-            $('input[type=range]').on('input', function() {
-                $('#' + this.id + '_value').text(this.value);
-            });
-    
-            // Submit the form and update the table without reloading the page
+            // rest of the JavaScript code
+
+            // Submit the form and update the tables without reloading the page
             $('#flood-analysis-form').on('submit', function(event) {
                 event.preventDefault();
     
@@ -80,6 +82,7 @@
                     success: function(response) {
                         $('#results-table').html(response.html);
                         $('#npv-table').html(response.npv_table_html);
+                        $('#strategy-tables').html(response.strategy_tables_html);  // Add this line
                     }
                 });
             });

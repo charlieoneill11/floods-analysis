@@ -9,6 +9,11 @@ from strategy import Strategy
 
 app = Flask(__name__)
 
+def round_to_millions(value):
+    if abs(value) > 10000:  # Assuming if it's >10000, it's not rounded
+        return round(round(value / 1e6, 1), 1)
+    else:
+        return round(value, 1)
 
 @app.route('/', methods=['GET'])
 def index():
@@ -87,6 +92,21 @@ def cost_estimation():
                            hh_in_1_to_1000=hh_in_1_to_1000)
         npv_table_df = npv_instance.npv_table()
         npv_table_html = npv_table_df.to_html(classes="npv-table", escape=False, justify="center", border=0)
+
+        # Generate the dataframes
+        years = range(2022, 2043)
+        strategies = ["../data/compulsory_buyback.txt", "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
+        strategy_obj = Strategy(years)
+        strategy_dfs = strategy_obj.calculate_strategies(strategies)
+
+        # Convert each summary dataframe to HTML and store in a dict with the strategy as the key
+        tables = {}
+        for strategy, df in zip(strategies, strategy_dfs):
+            title = strategy.split('/')[-1].split('.')[0].replace('_', ' ').title()
+            summary_df = strategy_obj.summarise_strategy(df)
+            summary_df = summary_df.applymap(round_to_millions)
+            tables[title] = summary_df.to_html(classes="strategy-table", escape=False, justify="center", border=0)
+
         
         table_template = '''
             <h2 style="text-align:center;">Net Present Value (NPV) Costs</h2>
@@ -119,11 +139,35 @@ def cost_estimation():
             </div>
         '''
 
+        strategy_template = '''
+            <h2>Strategy Alternatives</h2>
+            {% for title, table in tables.items() %}
+                <h3>{{ title }}</h3>
+                {{ table|safe }}
+            {% endfor %}
+        '''
+
         return jsonify({
-            'html': render_template_string(table_template, results=results, plot_url=plot_url, npv_table_html=npv_table_html)
+            'html': render_template_string(table_template, results=results, plot_url=plot_url, npv_table_html=npv_table_html) +
+                    render_template_string(strategy_template, tables=tables)
         })
 
-    return render_template('cost_estimation.html')
+
+    # Generate the dataframes
+    years = range(2022, 2043)
+    strategies = ["../data/compulsory_buyback.txt", "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
+    strategy_obj = Strategy(years)
+    strategy_dfs = strategy_obj.calculate_strategies(strategies)
+
+    # Convert each summary dataframe to HTML and store in a dict with the strategy as the key
+    tables = {}
+    for strategy, df in zip(strategies, strategy_dfs):
+        title = strategy.split('/')[-1].split('.')[0].replace('_', ' ').title()
+        summary_df = strategy_obj.summarise_strategy(df)
+        summary_df = summary_df.applymap(round_to_millions)
+        tables[title] = summary_df.to_html(classes="strategy-table", escape=False, justify="center", border=0)
+    
+    return render_template('cost_estimation.html', tables=tables)
 
 @app.route('/calculate_costs', methods=['POST'])
 def calculate_costs():
@@ -189,4 +233,4 @@ def calculate_costs():
     return render_template_string(table_template, results=results, plot_url=plot_url)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
