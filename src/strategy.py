@@ -9,21 +9,19 @@ class Strategy:
         self.years = years
 
     def calculate_strategy(self, strategy_file: str):
-        data = []
+        # Load the strategy data from the file
+        strategy_data = np.loadtxt(strategy_file)
 
-        for i, year in enumerate(self.years):
+        # Extract annual costs for households, government, and businesses
+        annual_hh_cost = strategy_data[:, -1]
+        annual_gov_cost = 2.41 * annual_hh_cost  # Gov vector is 2.41 times the HH vector
+        annual_bus_cost = 1.87 * annual_hh_cost  # Business vector is 1.87 times the HH vector
 
-            # Calculate the cost with program
-            annual_hh_cost = np.array([13.69, 13.25, 12.53, 11.81, 11.08, 10.36, 
-                                    9.64, 8.91, 8.19, 7.47, 6.74, 6.02, 5.3, 4.58, 
-                                    3.85, 3.13, 2.41, 1.6, 1.57, 1.55, 1.54])[i]
-            annual_gov_cost = 2.41 * annual_hh_cost  # Gov vector is 2.41 times the HH vector
-            annual_bus_cost = 1.87 * annual_hh_cost  # Business vector is 1.87 times the HH vector
-
-            data.append([annual_hh_cost, annual_gov_cost, annual_bus_cost])
+        # Stack these arrays together
+        data = np.vstack([annual_hh_cost, annual_gov_cost, annual_bus_cost]).T
 
         # Calculate the cost without program
-        base_costs = np.array([self.base_cost_func() for year in self.years])
+        base_costs = np.array([self.base_cost_func() for _ in self.years])
         # Add this to data, each as its own column
         data = np.concatenate((data, base_costs), axis=1)
 
@@ -35,14 +33,13 @@ class Strategy:
         data = np.concatenate((data, hh_diff.reshape(-1, 1), gov_diff.reshape(-1, 1), bus_diff.reshape(-1, 1)), axis=1)
 
         # Calculate the cost of the program
-        strategy_data = np.loadtxt(strategy_file)
         program_cost = 0.52 * strategy_data[:, 0]
         # Add this as a column to data
         data = np.concatenate((data, program_cost.reshape(-1, 1)), axis=1)
 
         return pd.DataFrame(data, columns=["HH_cost_with_program", "gov_cost_with_program", "bus_cost_with_program", 
-                                           "HH_cost_without_program", "gov_cost_without_program", "bus_cost_without_program", 
-                                           "HH_cost_difference", "gov_cost_difference", "bus_cost_difference", "program_cost"], index=self.years)
+                                        "HH_cost_without_program", "gov_cost_without_program", "bus_cost_without_program", 
+                                        "HH_cost_difference", "gov_cost_difference", "bus_cost_difference", "program_cost"], index=self.years)
 
     def base_cost_func(self):
         floods_analysis = FloodsAnalysis()
