@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 import time
 
 from main import *
+from strategy import Strategy
 
 app = Flask(__name__)
 
@@ -21,6 +22,30 @@ def home():
 @app.route('/parameter_estimation')
 def parameter_estimation():
     return render_template('parameter_estimation.html')
+
+@app.route('/strategy_tables')
+def strategy_tables():
+    # Generate the dataframes
+    years = range(2022, 2043)
+    strategies = ["../data/compulsory_buyback.txt", "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
+    strategy = Strategy(years)
+    strategy_dfs = strategy.calculate_strategies(strategies)
+
+    # Convert each dataframe to HTML and store in a dict with the strategy as the key
+    tables = {}
+    for strategy, df in zip(strategies, strategy_dfs):
+        title = strategy.split('/')[-1].split('.')[0].replace('_', ' ').title()
+        tables[title] = df.to_html(classes="strategy-table", escape=False, justify="center", border=0)
+    
+    # Render the tables in the template
+    template = '''
+        <h2>Strategy Alternatives</h2>
+        {% for title, table in tables.items() %}
+            <h3>{{ title }}</h3>
+            {{ table|safe }}
+        {% endfor %}
+    '''
+    return render_template_string(template, tables=tables)
 
 @app.route('/cost_estimation', methods=['GET', 'POST'])
 def cost_estimation():

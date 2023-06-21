@@ -276,7 +276,7 @@ def generate_plot(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000):
 
 # npv = NPV(year_range=range(2022, 2043), discount_rate=0.02)
 # print(npv.npv_table())
-fa = FloodsAnalysis()
-print(fa.expected_cost_to_hh())
-print(fa.expected_cost_to_government())
-print(fa.expected_cost_to_business())
+# fa = FloodsAnalysis()
+# print(fa.expected_cost_to_hh())
+# print(fa.expected_cost_to_government())
+# print(fa.expected_cost_to_business())
