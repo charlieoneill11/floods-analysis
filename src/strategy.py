@@ -22,13 +22,15 @@ class Strategy:
 
         # Calculate the cost without program
         base_costs = np.array([self.base_cost_func() for _ in self.years])
+        # Round base costs to millions
+        base_costs = np.round(base_costs / 1e6, 2)
         # Add this to data, each as its own column
         data = np.concatenate((data, base_costs), axis=1)
 
         # Calculate the difference between cost with and without program, for each sector
-        hh_diff = data[:, 0] - data[:, 3]
-        gov_diff = data[:, 1] - data[:, 4]
-        bus_diff = data[:, 2] - data[:, 5]
+        hh_diff = data[:, 3] - data[:, 0]
+        gov_diff = data[:, 4] - data[:, 1]
+        bus_diff = data[:, 5] - data[:, 2]
         # Add this to data, each as its own column
         data = np.concatenate((data, hh_diff.reshape(-1, 1), gov_diff.reshape(-1, 1), bus_diff.reshape(-1, 1)), axis=1)
 
@@ -90,32 +92,42 @@ class Strategy:
         summary_data = []
         for rate in discount_rates:
             rate_str = f"{int(rate * 100)}% Discount rate"
-            row_data = {}
+            data_for_rate = pd.DataFrame()
             for strategy_file in strategies:
                 df = self.calculate_strategy(strategy_file)
-  
+
                 # Extract the file name from the path
                 file_name = strategy_file.split('/')[-1]
                 # Remove the file extension
                 file_name_without_extension = file_name.split('.')[0]
                 # Convert the file name to title case
-                strategy_name = file_name_without_extension.replace("_", " ").title()
+                strategy_name = str(file_name_without_extension.replace("_", " ").title())
+                
+                strategy_data = {
+                    'Total': np.abs(self.npv(df['HH_cost_difference'] + df['gov_cost_difference'] + df['bus_cost_difference'], rate)),
+                    'Avoided HH cost': self.npv(df['HH_cost_without_program'] - df['HH_cost_with_program'], rate),
+                    'Avoided Gov cost': self.npv(df['gov_cost_without_program'] - df['gov_cost_with_program'], rate),
+                    'Avoided Bus cost': self.npv(df['bus_cost_without_program'] - df['bus_cost_with_program'], rate)
+                }
 
-                row_data.update({
-                    f'Total ({strategy_name})': self.npv(df['HH_cost_difference'] + df['gov_cost_difference'] + df['bus_cost_difference'], rate),
-                    f'Avoided HH cost ({strategy_name})': self.npv(df['HH_cost_without_program'] - df['HH_cost_with_program'], rate),
-                    f'Avoided Gov cost ({strategy_name})': self.npv(df['gov_cost_without_program'] - df['gov_cost_with_program'], rate),
-                    f'Avoided Bus cost ({strategy_name})': self.npv(df['bus_cost_without_program'] - df['bus_cost_with_program'], rate)
-                })
-            summary_data.append(row_data)
-        summary_df = pd.DataFrame(summary_data, index=[f"{int(rate * 100)}% Discount rate" for rate in discount_rates])
+                strategy_df = pd.DataFrame(strategy_data, index=[rate_str])
+                strategy_df.columns = pd.MultiIndex.from_product([[strategy_name], strategy_df.columns])
+                data_for_rate = pd.concat([data_for_rate, strategy_df], axis=1)
+
+            summary_data.append(data_for_rate)
+        summary_df = pd.concat(summary_data)
         return summary_df
+
         
 if __name__ == "__main__":
     years = range(2022, 2043)  # define the range of years
     strategies = ["../data/compulsory_buyback.txt", "../data/voluntary_buyback.txt", "../data/voluntary_landswap.txt"]
     
     strat = Strategy(years)
-    strategy_dfs = strat.calculate_strategies(strategies)
-    for df in strategy_dfs:
-        print(df)
+    final_df = strat.final_summary(strategies)
+    print(final_df)
+
+    # for file in strategies:
+    #     df = strat.calculate_strategy(file)
+    #     print(strat.summarise_strategy(df))
+    #     print('\n')

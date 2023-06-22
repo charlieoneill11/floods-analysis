@@ -19,14 +19,18 @@
         label {
             margin-bottom: 5px;
         }
+
+        .highest { background-color: green; color: white; }
+        .lowest { background-color: red; color: white; }
     </style>
 </head>
-<nav>
-    <a href="{{ url_for('index') }}">Home</a>
-    <a href="{{ url_for('parameter_estimation') }}">Parameter Estimation</a>
-    <a href="{{ url_for('cost_estimation') }}">Cost Estimation</a>
-</nav>
 <body>
+    <nav>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('parameter_estimation') }}">Parameter Estimation</a>
+        <a href="{{ url_for('cost_estimation') }}">Cost Estimation</a>
+    </nav>
+
     <h1>Flood Mitigation Tool</h1>
 
     <form id="flood-analysis-form">
@@ -48,7 +52,6 @@
             <span id="hh_in_1_to_1000_value">1959</span>
         </div>
     
-        <!-- Add more sliders for other variables here -->
         <input type="submit" value="Calculate" class="calculate-btn">
     </form>
 
@@ -72,12 +75,16 @@
 
     <script>
         $(document).ready(function() {
-            // rest of the JavaScript code
+            // Update displayed slider value
+            $('input[type="range"]').on('input', function() {
+                let id = $(this).attr('id');
+                $('#'+id+'_value').text($(this).val());
+            });
 
-            // Submit the form and update the tables without reloading the page
+            // Rest of the code
             $('#flood-analysis-form').on('submit', function(event) {
                 event.preventDefault();
-    
+
                 $.ajax({
                     url: '{{ url_for("cost_estimation") }}',
                     method: 'POST',
@@ -87,6 +94,7 @@
                         $('#results-table').html(response.html);
                         $('#npv-table').html(response.npv_table_html);
                         $('#strategy-tables').html(response.strategy_tables_html);
+                        highlightMaxMin($('#strategy-tables'));
                     }
                 });
 
@@ -97,10 +105,43 @@
                     dataType: 'json',
                     success: function(response) {
                         $('#final-summary-tables').html(response.final_summary_html);
+                        highlightMaxMin($('#final-summary-tables'));
                     }
                 });
             });
+
+            function highlightMaxMin($parent) {
+                $parent.find('table').each(function() {
+                    $(this).find('tbody tr').each(function() {
+                        let $cells = $(this).find('td');
+                        let maxVal = -Infinity;
+                        let minVal = Infinity;
+                        let maxIndex = -1;
+                        let minIndex = -1;
+                        let strategyBlocks = Math.floor($cells.length / 4); // assuming each strategy has 4 cells
+
+                        for (let i = 0; i < strategyBlocks; i++) {
+                            let totalCellIndex = i * 4; // "Total" is the first cell in each strategy block
+                            let totalCellValue = parseFloat($cells.eq(totalCellIndex).text());
+
+                            if (totalCellValue > maxVal) {
+                                maxVal = totalCellValue;
+                                maxIndex = totalCellIndex;
+                            }
+
+                            if (totalCellValue < minVal) {
+                                minVal = totalCellValue;
+                                minIndex = totalCellIndex;
+                            }
+                        }
+
+                        if (maxIndex !== -1) $cells.eq(maxIndex).addClass('highest');
+                        if (minIndex !== -1) $cells.eq(minIndex).addClass('lowest');
+                    });
+                });
+            }
         });
     </script>
 </body>
 </html>
+
