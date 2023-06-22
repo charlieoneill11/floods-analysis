@@ -240,39 +240,95 @@ def fit_logarithmic_curve(cost_points, probability_points):
 
 
 def generate_plot(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000):
-    flood_analysis = FloodsAnalysis(hh_in_1_to_10=hh_in_1_to_10,
-                                    hh_in_1_to_100=hh_in_1_to_100,
-                                    hh_in_1_to_1000=hh_in_1_to_1000)
-    cost_points = flood_analysis.calculate_total_costs()[:-1]
-    probability_points = [0.1, 0.01, 0.001]
+    # Calculate the costs
+    flood_analysis = FloodsAnalysis(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000)
+    repair_costs = flood_analysis.calculate_repair_costs()
+    rebuild_costs = flood_analysis.calculate_rebuild_costs()
+    income_costs = flood_analysis.calculate_income_costs()
+    rental_costs = flood_analysis.calculate_rental_costs()
 
-    # Fit logarithmic curve to data
-    a, b = fit_logarithmic_curve(cost_points, probability_points)
+    # Calculate expected annual costs
+    cost_matrix = np.vstack([repair_costs, rebuild_costs, income_costs, rental_costs])
+    expected_annual_costs = [(1/y)*cost_matrix[:, i].sum() for i, y in enumerate([10, 100, 1000])]
 
-    # Create a range of cost values to generate the curve
-    x_vals = np.linspace(min(cost_points), max(cost_points), 100)
+    # Fit a logarithmic function to the data
+    a, b = fit_logarithmic_curve(expected_annual_costs, [0.1, 0.01, 0.001])
 
-    # Generate the logarithmic curve using the fitted parameters
+    # Generate the logarithmic curves
+    x_vals = np.linspace(min(expected_annual_costs), max(expected_annual_costs), 100)
     y_vals = logarithmic_func(x_vals, a, b)
 
-    # Plot the data points and the logarithmic curve
-    fig, ax = plt.subplots(figsize=(5, 3))
-    ax.plot(cost_points, probability_points, 'o', label='Data Points')
-    ax.plot(x_vals, y_vals, label=r'Logarithmic Fit: $y = a\ln(x) + b$')
+    # Create the figures
+    fig, ax = plt.subplots(1, 2, figsize=(17, 5))
 
-    # Format the legend to include the equation for the logarithmic curve
-    eqn_str = fr'$y = {a:.2f}\ln(x) + {b:.2f}$'
-    ax.legend(labels=['Data Points', eqn_str])
+    # Plot the one-off costs
+    ax[0].plot(expected_annual_costs, [0.1, 0.01, 0.001], 'o', label='Data Points')
+    ax[0].plot(x_vals, y_vals, label=r'Logarithmic Fit: $y = a\ln(x) + b$')
+    ax[0].legend(labels=['Data Points', fr'$y = {a:.2f}\ln(x) + {b:.2f}$'])
+    ax[0].set_xlabel('Cost ($M)')
+    ax[0].set_ylabel('Probability')
+    ax[0].set_title('One-off cost of different flood levels')
 
-    # Set the axis labels and title
-    ax.set_xlabel('Cost ($M)')
-    ax.set_ylabel('Probability')
-    ax.set_title('One-off cost of different flood levels')
+    # Plot the expected annual costs
+    ax[1].plot(expected_annual_costs, [0.1, 0.01, 0.001], 'o', label='Data Points')
+    ax[1].plot(x_vals, y_vals, label=r'Logarithmic Fit: $y = a\ln(x) + b$')
+    ax[1].legend(labels=['Data Points', fr'$y = {a:.2f}\ln(x) + {b:.2f}$'])
+    ax[1].set_xlabel('Cost ($M)')
+    ax[1].set_ylabel('Probability')
+    ax[1].set_title('Expected annual cost of different flood levels')
 
-    plt.subplots_adjust(bottom=0.2)
+    # Save the plot as a PNG
+    fig.savefig('static/plot.png', bbox_inches='tight')
 
-    # Save the plot as an image file
-    plt.savefig('static/plot.png', dpi=200)
+    # Close the figure to free up memory
+    plt.close(fig)
+
+def generate_new_plots(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000):
+    # Create the contour plot for hh_in_1_to_10 and hh_in_1_to_100
+    hh_in_1_to_10_range = np.linspace(5, 1000, 100)
+    hh_in_1_to_100_range = np.linspace(500, 5000, 100)
+    hh_in_1_to_10_grid, hh_in_1_to_100_grid = np.meshgrid(hh_in_1_to_10_range, hh_in_1_to_100_range)
+    expected_cost_grid = np.zeros_like(hh_in_1_to_10_grid)
+
+    for i in range(len(hh_in_1_to_10_range)):
+        for j in range(len(hh_in_1_to_100_range)):
+            flood_analysis = FloodsAnalysis(hh_in_1_to_10_range[i], hh_in_1_to_100_range[j], hh_in_1_to_1000)
+            expected_cost = flood_analysis.calculate_total_costs()[-1]
+            expected_cost_grid[j, i] = expected_cost
+
+    # Create figure and subplots
+    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(15, 5))
+
+    # Plot on first axis
+    contour = ax1.contourf(hh_in_1_to_10_grid, hh_in_1_to_100_grid, expected_cost_grid, cmap='viridis')
+    cbar = plt.colorbar(contour, ax=ax1)
+    ax1.set_xlabel('Homes in 1-in-10 flood range')
+    ax1.set_ylabel('Homes in 1-in-100 flood range')
+    ax1.set_title('Annual expected cost ($M)')
+
+    # Create the contour plot for hh_in_1_to_100 and hh_in_1_to_1000
+    hh_in_1_to_100_range = np.linspace(5, 1000, 100)
+    hh_in_1_to_1000_range = np.linspace(1500, 15000, 100)
+    hh_in_1_to_100_grid, hh_in_1_to_1000_grid = np.meshgrid(hh_in_1_to_100_range, hh_in_1_to_1000_range)
+    expected_cost_grid = np.zeros_like(hh_in_1_to_100_grid)
+
+    for i in range(len(hh_in_1_to_100_range)):
+        for j in range(len(hh_in_1_to_1000_range)):
+            flood_analysis = FloodsAnalysis(hh_in_1_to_10, hh_in_1_to_100_range[i], hh_in_1_to_1000_range[j])
+            expected_cost = flood_analysis.calculate_total_costs()[-1]
+            expected_cost_grid[j, i] = expected_cost
+
+    # Plot on second axis
+    contour = ax2.contourf(hh_in_1_to_100_grid, hh_in_1_to_1000_grid, expected_cost_grid, cmap='viridis')
+    cbar = plt.colorbar(contour, ax=ax2)
+    ax2.set_xlabel('Homes in 1-in-100 flood range')
+    ax2.set_ylabel('Homes in 1-in-1000 flood range')
+    ax2.set_title('Annual expected cost ($M)')
+
+    # Save figure
+    fig.tight_layout()
+    fig.savefig('static/plot3.png')
+    plt.close(fig)
 
 # npv = NPV(year_range=range(2022, 2043), discount_rate=0.02)
 # print(npv.npv_table())

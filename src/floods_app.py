@@ -80,6 +80,7 @@ def cost_estimation():
 
         # Generate the plot
         generate_plot(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000)
+        generate_new_plots(hh_in_1_to_10, hh_in_1_to_100, hh_in_1_to_1000)
 
         # Create an instance of the FloodsAnalysis class with user input (or default values)
         flood_analysis = FloodsAnalysis(hh_in_1_to_10=hh_in_1_to_10, 
@@ -103,6 +104,7 @@ def cost_estimation():
 
         timestamp = int(time.time())
         plot_url = url_for('static', filename='plot.png', t=timestamp)
+        plot3_url = url_for('static', filename='plot3.png', t=timestamp)
 
         # Create an instance of the NPV class called npv_instance
         npv_instance = NPV(hh_in_1_to_10=hh_in_1_to_10, 
@@ -155,6 +157,9 @@ def cost_estimation():
             <div style="display: flex; justify-content: center;">
                 <img src="{{ plot_url }}" alt="Plot">
             </div>
+            <div style="display: flex; justify-content: center;">
+                <img src="{{ plot3_url }}" alt="Plot New">
+            </div>
         '''
 
         strategy_template = '''
@@ -166,7 +171,7 @@ def cost_estimation():
         '''
 
         return jsonify({
-            'html': render_template_string(table_template, results=results, plot_url=plot_url, npv_table_html=npv_table_html) +
+            'html': render_template_string(table_template, results=results, plot_url=plot_url, plot3_url=plot3_url, npv_table_html=npv_table_html) +
                     render_template_string(strategy_template, tables=tables)
         })
 
